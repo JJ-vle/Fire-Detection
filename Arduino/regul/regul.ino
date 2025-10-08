@@ -27,6 +27,10 @@
 float SEUIL_BAS  = 26.0; // SB en °C  (chauffage en dessous)
 float SEUIL_HAUT = 28.0; // SH en °C  (climatisation au dessus)
 
+const int FAN_MIN = 0;    // Ventilateur à l'arrêt
+const int FAN_MAX = 255;  // Ventilateur à pleine vitesse
+
+
 // Fan PWM behaviour
 const float FAN_MAX_DELTA = 10.0; // °C au dessus de SH pour atteindre 100% de la vitesse
 int chan;
@@ -138,6 +142,20 @@ void controlTemperature(float tempC) {
   }
 }
 
+void updateFan(float tempC) {
+  if (tempC <= SEUIL_HAUT) {
+    // Température en dessous du seuil => ventilateur arrêté
+    analogWrite(PIN_FAN, FAN_MIN);
+  } else {
+    // Température au dessus du seuil => vitesse proportionnelle
+    float delta = tempC - SEUIL_HAUT;
+    if (delta > FAN_MAX_DELTA) delta = FAN_MAX_DELTA; // Limite à 100%
+    int duty = FAN_MIN + (int)((delta / FAN_MAX_DELTA) * (FAN_MAX - FAN_MIN));
+    analogWrite(PIN_FAN, duty);
+  }
+}
+
+
 // Mise à jour état NeoPixel selon température
 void updateNeoPixelForTemp(float tempC) {
   if (tempC > SEUIL_HAUT) {
@@ -171,12 +189,6 @@ void setup() {
   digitalWrite(PIN_HEAT, LOW);
   digitalWrite(PIN_ONBOARD_LED, LOW);
 
-  // PWM fan setup
-  // VENTILATEUR NON FONCTIONNEL
-  //ledcSetup(FAN_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
-  //ledcAttachPin(PIN_FAN, FAN_CHANNEL);
-  //ledcWrite(FAN_CHANNEL, 0);
-
   // NeoPixel init
   strip.begin();
   strip.show(); // off
@@ -185,10 +197,6 @@ void setup() {
   // ADC config (optionnel) : préciser attenuation si besoin (par défaut)
   // analogSetPinAttenuation(PIN_LIGHT, ADC_11db); // si nécessaire pour plage plus large
   analogReadResolution(12); // 0..4095
-
-  Serial.printf("Seuil bas (SB): %.2f C\n", SEUIL_BAS);
-  Serial.printf("Seuil haut (SH): %.2f C\n", SEUIL_HAUT);
-  Serial.println("Demarrage boucle de lecture...");
 }
 
 // ------------------- Loop -------------------
@@ -218,7 +226,10 @@ void loop() {
     bool fire = detectFire(lightVal);
 
     // --- 4) Contrôle température ---
-    if (!isnan(tempC)) controlTemperature(tempC);
+    if (!isnan(tempC)) {
+        controlTemperature(tempC);
+        updateFan(tempC);
+    }
 
     // --- 5) Mise à jour visuelle ---
     updateNeoPixelForTemp(tempC);
@@ -244,7 +255,7 @@ void loop() {
     JsonObject actuators = doc.createNestedObject("actuators");
     actuators["clim"] = (bool)digitalRead(PIN_CLIM);
     actuators["heat"] = (bool)digitalRead(PIN_HEAT);
-    actuators["fan_pwm"] = ledcRead(FAN_CHANNEL);
+    actuators["fan_pwm"] = analogRead(PIN_FAN);
 
     JsonObject thresholds = doc.createNestedObject("thresholds");
     thresholds["low"] = SEUIL_BAS;

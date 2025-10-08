@@ -20,7 +20,7 @@
 #include <Adafruit_NeoPixel.h>
 #include "esp32-hal-ledc.h"
 
-
+#include <ArduinoJson.h>
 
 // ------------------- Paramètres utilisateur -------------------
 // Seuils de consigne (modifiable facilement)
@@ -198,30 +198,29 @@ const unsigned long LOOP_DELAY_MS = 1000;
 void loop() {
   unsigned long now = millis();
 
-  // On fait une lecture toutes les secondes
   if (now - lastPrint >= LOOP_DELAY_MS) {
     lastPrint = now;
 
-    // 1) Lecture température
-    sensors.requestTemperatures(); // lance conversion (bloquant court)
-    float tempC = sensors.getTempCByIndex(0); // capteur index 0
+    // --- 1) Lecture température ---
+    sensors.requestTemperatures();
+    float tempC = sensors.getTempCByIndex(0);
     if (tempC == DEVICE_DISCONNECTED_C) {
       Serial.println("Erreur : capteur DS18B20 non trouve !");
       tempC = NAN;
     }
 
-    // 2) Lecture lumière
+    // --- 2) Lecture lumière ---
     int lightVal = readLight();
     pushLightValue(lightVal);
     int lightAvg = lightAverage();
 
-    // 3) Détection incendie
+    // --- 3) Détection incendie ---
     bool fire = detectFire(lightVal);
 
-    // 4) Contrôle clim/heat/fan
+    // --- 4) Contrôle température ---
     if (!isnan(tempC)) controlTemperature(tempC);
 
-    // 5) Mise à jour NeoPixel et onboard LED si incendie
+    // --- 5) Mise à jour visuelle ---
     updateNeoPixelForTemp(tempC);
     if (fire) {
       digitalWrite(PIN_ONBOARD_LED, HIGH);
@@ -229,32 +228,31 @@ void loop() {
       digitalWrite(PIN_ONBOARD_LED, LOW);
     }
 
-    // 6) Affichage monitoring
-    Serial.print("Temp: ");
-    if (isnan(tempC)) Serial.print("NaN");
-    else Serial.print(tempC, 2);
-    Serial.print(" C  | Light: ");
-    Serial.print(lightVal);
-    Serial.print(" (avg ");
-    Serial.print(lightAvg);
-    Serial.print(")");
+    // --- 6) Construction du JSON ---
+    DynamicJsonDocument doc(512);
 
-    // Afficher état actuateurs
-    Serial.print(" | Clim:");
-    Serial.print(digitalRead(PIN_CLIM) ? "ON" : "OFF");
-    Serial.print(" | Heat:");
-    Serial.print(digitalRead(PIN_HEAT) ? "ON" : "OFF");
-    int fanDuty = ledcRead(FAN_CHANNEL);
-    Serial.print(" | Fan PWM:");
-    Serial.print(fanDuty);
-    Serial.print("/255");
-
-    if (fire) {
-      Serial.print("  *** FIRE DETECTED! ***");
+    doc["timestamp_ms"] = now;
+    if (isnan(tempC)) {
+      doc["temperature_c"] = nullptr;
+    } else {
+      doc["temperature_c"] = tempC;
     }
+    doc["light_raw"] = lightVal;
+    doc["light_avg"] = lightAvg;
+    doc["fire_detected"] = fire;
 
+    JsonObject actuators = doc.createNestedObject("actuators");
+    actuators["clim"] = (bool)digitalRead(PIN_CLIM);
+    actuators["heat"] = (bool)digitalRead(PIN_HEAT);
+    actuators["fan_pwm"] = ledcRead(FAN_CHANNEL);
+
+    JsonObject thresholds = doc.createNestedObject("thresholds");
+    thresholds["low"] = SEUIL_BAS;
+    thresholds["high"] = SEUIL_HAUT;
+
+    serializeJson(doc, Serial);
     Serial.println();
-  }
 
   // nothing else blocking
+  }
 }

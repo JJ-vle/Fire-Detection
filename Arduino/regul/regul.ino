@@ -127,26 +127,26 @@ void controlTemperature(float tempC) {
   }
 }
 
+int fanDuty = 0;
 
 void updateFan(float tempC) {
   if (tempC <= SOUS_SEUIL_FAN) {
     // En dessous du sous-seuil => ventilateur arrêté
-    analogWrite(PIN_FAN, FAN_MIN);
+    fanDuty = FAN_MIN;
   } 
   else if (tempC >= SEUIL_HAUT) {
     // À partir du seuil haut => 100 %
-    analogWrite(PIN_FAN, FAN_MAX);
+    fanDuty = FAN_MAX;
   } 
   else {
     // Entre sous-seuil et seuil haut : proportion linéaire
     float frac = (tempC - SOUS_SEUIL_FAN) / (SEUIL_HAUT - SOUS_SEUIL_FAN);
     if (frac < 0) frac = 0;
     if (frac > 1) frac = 1;
-    int duty = FAN_MIN + (int)(frac * (FAN_MAX - FAN_MIN));
-    analogWrite(PIN_FAN, duty);
+    fanDuty = FAN_MIN + (int)(frac * (FAN_MAX - FAN_MIN));
   }
+  analogWrite(PIN_FAN, fanDuty);
 }
-
 
 // Mise à jour état NeoPixel selon température
 void updateNeoPixelForTemp(float tempC) {
@@ -185,6 +185,7 @@ void setup() {
   strip.setBrightness(80);
 
   SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
+  pinMode(PIN_FAN, OUTPUT);
 
   // ADC config (optionnel) : préciser attenuation si besoin (par défaut)
   // analogSetPinAttenuation(PIN_LIGHT, ADC_11db); // si nécessaire pour plage plus large
@@ -264,7 +265,7 @@ void loop() {
     JsonObject actuators = doc.createNestedObject("actuators");
     actuators["clim"] = (bool)digitalRead(PIN_CLIM);
     actuators["heat"] = (bool)digitalRead(PIN_HEAT);
-    actuators["fan_pwm"] = analogRead(PIN_FAN);
+    actuators["fan_pwm"] = fanDuty;
 
     JsonObject thresholds = doc.createNestedObject("thresholds");
     thresholds["low"] = SEUIL_BAS;

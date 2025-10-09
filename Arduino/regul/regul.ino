@@ -13,27 +13,24 @@
     - OneWire
     - DallasTemperature
     - Adafruit_NeoPixel
+    - ArduinoJson (B. Blanchard)
 */
 
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <Adafruit_NeoPixel.h>
-#include "esp32-hal-ledc.h"
-
 #include <ArduinoJson.h>
+//#include "esp32-hal-ledc.h"
 
 // ------------------- Paramètres utilisateur -------------------
 // Seuils de consigne (modifiable facilement)
 float SEUIL_BAS  = 26.0; // SB en °C  (chauffage en dessous)
 float SEUIL_HAUT = 28.0; // SH en °C  (climatisation au dessus)
+float SOUS_SEUIL_FAN = 0; 
 
 const int FAN_MIN = 0;    // Ventilateur à l'arrêt
 const int FAN_MAX = 255;  // Ventilateur à pleine vitesse
 
-
-// Fan PWM behaviour
-const float FAN_MAX_DELTA = 10.0; // °C au dessus de SH pour atteindre 100% de la vitesse
-int chan;
 // NeoPixel
 #define NEOPIXEL_PIN 13
 #define NEOPIXEL_COUNT 5
@@ -60,7 +57,6 @@ const int FAN_CHANNEL = 3; // un channel libre
 // ------------------- Objets / variables -------------------
 OneWire oneWire(PIN_DS18B20);
 DallasTemperature sensors(&oneWire);
-
 Adafruit_NeoPixel strip(NEOPIXEL_COUNT, NEOPIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 // Buffer circulaire pour moyenne lumière
@@ -114,43 +110,39 @@ void pushLightValue(int v) {
 
 // Met à jour sorties chauffage/clim/fan selon temp
 void controlTemperature(float tempC) {
-  // Cas 1 : temp > SEUIL_HAUT => climatisation ON, radiateur OFF.
-  //           Ventilateur démarre et augmente avec delta
-  // Cas 2 : temp < SEUIL_BAS => chauffage ON, clim OFF, fan OFF
-  // Cas 3 : entre SB et SH => tout OFF
+  // Cas 1 : temp > SEUIL_HAUT => climatisation ON, radiateur OFF
   if (tempC > SEUIL_HAUT) {
     digitalWrite(PIN_CLIM, HIGH);
     digitalWrite(PIN_HEAT, LOW);
-
-    float over = tempC - SEUIL_HAUT;
-    if (over < 0) over = 0;
-    float frac = over / FAN_MAX_DELTA;
-    if (frac > 1.0) frac = 1.0;
-    int duty = (int)(frac * 255.0); // 0..255
-    ledcWrite(FAN_CHANNEL, duty); // PWM
   }
+  // Cas 2 : temp < SEUIL_BAS => chauffage ON, clim OFF
   else if (tempC < SEUIL_BAS) {
     digitalWrite(PIN_HEAT, HIGH);
     digitalWrite(PIN_CLIM, LOW);
-    ledcWrite(FAN_CHANNEL, 0);
   }
+  // Cas 3 : entre seuils => tout OFF
   else {
-    // entre seuils : tout éteint
     digitalWrite(PIN_CLIM, LOW);
     digitalWrite(PIN_HEAT, LOW);
-    ledcWrite(FAN_CHANNEL, 0);
   }
 }
 
+
 void updateFan(float tempC) {
-  if (tempC <= SEUIL_HAUT) {
-    // Température en dessous du seuil => ventilateur arrêté
+  if (tempC <= SOUS_SEUIL_FAN) {
+    // En dessous du sous-seuil => ventilateur arrêté
     analogWrite(PIN_FAN, FAN_MIN);
-  } else {
-    // Température au dessus du seuil => vitesse proportionnelle
-    float delta = tempC - SEUIL_HAUT;
-    if (delta > FAN_MAX_DELTA) delta = FAN_MAX_DELTA; // Limite à 100%
-    int duty = FAN_MIN + (int)((delta / FAN_MAX_DELTA) * (FAN_MAX - FAN_MIN));
+  } 
+  else if (tempC >= SEUIL_HAUT) {
+    // À partir du seuil haut => 100 %
+    analogWrite(PIN_FAN, FAN_MAX);
+  } 
+  else {
+    // Entre sous-seuil et seuil haut : proportion linéaire
+    float frac = (tempC - SOUS_SEUIL_FAN) / (SEUIL_HAUT - SOUS_SEUIL_FAN);
+    if (frac < 0) frac = 0;
+    if (frac > 1) frac = 1;
+    int duty = FAN_MIN + (int)(frac * (FAN_MAX - FAN_MIN));
     analogWrite(PIN_FAN, duty);
   }
 }
@@ -174,8 +166,6 @@ void updateNeoPixelForTemp(float tempC) {
 void setup() {
   Serial.begin(115200);
   delay(100);
-  Serial.println();
-  Serial.println("=== Regulation Temperature ESP32 ===");
 
   // Init capteurs
   sensors.begin();
@@ -194,6 +184,8 @@ void setup() {
   strip.show(); // off
   strip.setBrightness(80);
 
+  SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
+
   // ADC config (optionnel) : préciser attenuation si besoin (par défaut)
   // analogSetPinAttenuation(PIN_LIGHT, ADC_11db); // si nécessaire pour plage plus large
   analogReadResolution(12); // 0..4095
@@ -204,6 +196,24 @@ unsigned long lastPrint = 0;
 const unsigned long LOOP_DELAY_MS = 1000;
 
 void loop() {
+
+  String input = "";
+  if (Serial.available()) {
+    input = Serial.readStringUntil('\n');
+    input.trim();
+
+    if (input.startsWith("MAX:")) {
+      float newMax = input.substring(4).toFloat();
+      SEUIL_HAUT = newMax;
+      SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
+    }
+    else if (input.startsWith("MIN:")) {
+      float newMin = input.substring(4).toFloat();
+      SEUIL_BAS = newMin;
+      SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
+    }
+  }
+
   unsigned long now = millis();
 
   if (now - lastPrint >= LOOP_DELAY_MS) {
@@ -213,7 +223,6 @@ void loop() {
     sensors.requestTemperatures();
     float tempC = sensors.getTempCByIndex(0);
     if (tempC == DEVICE_DISCONNECTED_C) {
-      Serial.println("Erreur : capteur DS18B20 non trouve !");
       tempC = NAN;
     }
 
@@ -263,7 +272,5 @@ void loop() {
 
     serializeJson(doc, Serial);
     Serial.println();
-
-  // nothing else blocking
   }
 }

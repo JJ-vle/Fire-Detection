@@ -1,11 +1,6 @@
 #include <ArduinoJson.h>
 
 #include "config.h"
-/*#include "./modules/sensors/light.h"
-#include "./modules/sensors/temperature.h"
-#include "./modules/actuators/fan.h"
-#include "./modules/actuators/neopixel.h"*/
-
 #include "light.h"
 #include "temperature.h"
 #include "fan.h"
@@ -29,13 +24,11 @@ void handleSerialInput() {
     float newMax = input.substring(4).toFloat();
     SEUIL_HAUT = newMax;
     SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
-    Serial.println(F("{\"info\":\"Seuil haut modifié\"}"));
   } 
   else if (input.startsWith("MIN:")) {
     float newMin = input.substring(4).toFloat();
     SEUIL_BAS = newMin;
     SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
-    Serial.println(F("{\"info\":\"Seuil bas modifié\"}"));
   }
 }
 
@@ -68,6 +61,7 @@ void loop() {
   float tempC = readTemperature();
   int lightVal = readLight();
   pushLightValue(lightVal);
+  int lightAvg = lightAverage();
   bool fire = detectFire(lightVal);
 
   // Actions
@@ -86,11 +80,18 @@ void loop() {
   } else {
     doc["temperature_c"] = tempC;
   }
+  JsonObject actuators = doc.createNestedObject("actuators");
+  actuators["fan_pwm"] = fanDuty;
+  actuators["clim"] = (bool)digitalRead(PIN_CLIM);
+  actuators["heat"] = (bool)digitalRead(PIN_HEAT);
+
   doc["light_raw"] = lightVal;
+  doc["light_avg"] = lightAvg;
   doc["fire_detected"] = fire;
-  doc["fan_pwm"] = fanDuty;
-  doc["seuil_low"] = SEUIL_BAS;
-  doc["seuil_high"] = SEUIL_HAUT;
+
+  JsonObject thresholds = doc.createNestedObject("thresholds");
+  thresholds["low"] = SEUIL_BAS;
+  thresholds["high"] = SEUIL_HAUT;
 
   serializeJson(doc, Serial);
   Serial.println();

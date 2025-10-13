@@ -33,13 +33,13 @@ pip install jsonschema
 ### Avec le fichier par défaut (`test.json`) :
 
 ```bash
-python validate_json.py
+python val.py
 ```
 
 ### Avec un fichier spécifique :
 
 ```bash
-python validate_json.py chemin/vers/fichier.json
+python val.py chemin/vers/fichier.json
 ```
 
 ### Exemple de sortie

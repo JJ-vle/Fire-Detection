@@ -1,0 +1,1 @@
+{"timestamp_ms":343000,"temperature_c":25.9375,"light_raw":0,"light_avg":0,"fire_detected":false,"actuators":{"clim":false,"heat":true,"fan_pwm":0},"thresholds":{"low":26,"high":28}}

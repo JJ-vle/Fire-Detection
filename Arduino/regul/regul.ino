@@ -1,3 +1,4 @@
+// regul.ino
 #include <ArduinoJson.h>
 
 #include "config.h"
@@ -6,7 +7,7 @@
 #include "fan.h"
 #include "neopixel.h"
 
-// Définition des variables globales
+// définition des variables globales
 float SEUIL_BAS = 26.0;
 float SEUIL_HAUT = 28.0;
 float SOUS_SEUIL_FAN = 0;
@@ -14,25 +15,26 @@ float SOUS_SEUIL_FAN = 0;
 unsigned long lastPrint = 0;
 const unsigned long LOOP_DELAY_MS = 1000;
 
+// gestion des commandes reçues sur le port série
 void handleSerialInput() {
   if (!Serial.available()) return;
 
   String input = Serial.readStringUntil('\n');
   input.trim();
 
-  if (input.startsWith("MAX:")) {
+  if (input.startsWith("MAX:")) { // changer seuil haut
     float newMax = input.substring(4).toFloat();
     SEUIL_HAUT = newMax;
     SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
   } 
-  else if (input.startsWith("MIN:")) {
+  else if (input.startsWith("MIN:")) {  // changer seuil bas
     float newMin = input.substring(4).toFloat();
     SEUIL_BAS = newMin;
     SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
   }
 }
 
-
+// initialiser
 void setup() {
   Serial.begin(115200);
   delay(100);
@@ -57,14 +59,14 @@ void loop() {
   if (now - lastPrint < LOOP_DELAY_MS) return;
   lastPrint = now;
 
-  // Lecture
+  // lecture
   float tempC = readTemperature();
   int lightVal = readLight();
   pushLightValue(lightVal);
   int lightAvg = lightAverage();
   bool fire = detectFire(lightVal);
 
-  // Actions
+  // actions
   if (!isnan(tempC)) {
     controlTemperature(tempC);
     updateFan(tempC);
@@ -84,11 +86,9 @@ void loop() {
   actuators["fan_pwm"] = fanDuty;
   actuators["clim"] = (bool)digitalRead(PIN_CLIM);
   actuators["heat"] = (bool)digitalRead(PIN_HEAT);
-
   doc["light_raw"] = lightVal;
   doc["light_avg"] = lightAvg;
   doc["fire_detected"] = fire;
-
   JsonObject thresholds = doc.createNestedObject("thresholds");
   thresholds["low"] = SEUIL_BAS;
   thresholds["high"] = SEUIL_HAUT;

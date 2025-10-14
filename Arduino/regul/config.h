@@ -25,7 +25,9 @@ const int FAN_MAX = 255;
 // Lumière
 const int LIGHT_BUFFER_SIZE = 10;
 const int LIGHT_DELTA_THRESHOLD = 800;
-const int LIGHT_ABSOLUTE_THRESHOLD = 3500;
+const int LIGHT_ABSOLUTE_THRESHOLD = 1000;
+// Lumière - Détection de feu
+const unsigned long FIRE_HOLD_TIME_MS = 3000; // garder l'état feu 3s minimum
 
 // PWM
 const int PWM_FREQ = 5000;

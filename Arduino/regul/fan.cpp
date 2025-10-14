@@ -10,11 +10,13 @@ void initFan() {
 }
 
 // met à jour la puissance du ventilateur en fonction de la température
-void updateFan(float tempC) {
+void updateFan(float tempC, bool fire) {
   // si la température est en dessous du seuil intermédiaire, ventilateur au minimum (éteint)
   if (tempC <= SOUS_SEUIL_FAN) fanDuty = FAN_MIN;
   // si la température dépasse le seuil haut, ventilateur au maximum
   else if (tempC >= SEUIL_HAUT) fanDuty = FAN_MAX;
+  // si feu => arrêt
+  else if (fire) fanDuty = 0;
 
   // sinon, ventilateur proportionnel à la température
   else {

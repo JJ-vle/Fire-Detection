@@ -3,5 +3,5 @@
 #include <Arduino.h>
 
 void initFan();
-void updateFan(float tempC);
+void updateFan(float tempC, bool fire);
 extern int fanDuty;

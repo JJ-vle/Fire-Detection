@@ -1,6 +1,7 @@
 // light.cpp
 #include "light.h"
 #include "config.h"
+#include "temperature.h"
 
 int lightBuffer[LIGHT_BUFFER_SIZE]; // buffer circulaire pour stocker les dernières mesures de luminosité
 int lightIndex = 0;
@@ -39,15 +40,36 @@ int lightAverage() {
 }
 
 
-// détection d’un feu potentiel basé sur la luminosité
+// détection d’un feu potentiel basé sur la luminosité et la température
+// -> on cherche à détecter une situation où la température est élevée
+//   ET où la luminosité moyenne est forte (lumière persistante, pas un flash soudain)
 bool detectFire(int currentLight) {
-  int avg = lightAverage();
+  
+  int avgLight = lightAverage();  // moyenne des dernières valeurs de lumière
 
-  // si luminosité dépasse seuil absolu -> feu détecté
-  if (currentLight >= LIGHT_ABSOLUTE_THRESHOLD) return true;
-  // si buffer plein et que luminosité actuelle est nettement supérieure à la moyenne -> feu détecté
-  if (lightBufferFilled && (currentLight - avg) >= LIGHT_DELTA_THRESHOLD) return true;
+  float tempC = readTemperature();
+  if (isnan(tempC)) return false; // si capteur débranché, on ne détecte rien
 
-  // sinon -> pas de feu détecté
+  // detections
+  bool lightHigh = (avgLight >= LIGHT_ABSOLUTE_THRESHOLD);
+  bool tempHigh = (tempC >= SEUIL_HAUT);
+
+  // mémorisation de l'état de feu
+  static unsigned long lastFireMillis = 0;
+
+  // feu détecté si lumière forte ET température haute
+  bool detectedNow = lightHigh && tempHigh;
+
+  if (detectedNow) {
+    lastFireMillis = millis(); // on enregistre le moment de détection
+    return true;
+  }
+
+  // si un feu a été détecté récemment, on garde l'état actif un court moment
+  if (millis() - lastFireMillis < FIRE_HOLD_TIME_MS)
+    return true;
+
+  // sinon, pas de feu
   return false;
 }
+

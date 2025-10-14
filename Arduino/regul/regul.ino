@@ -69,7 +69,7 @@ void loop() {
   // actions
   if (!isnan(tempC)) {
     controlTemperature(tempC);
-    updateFan(tempC);
+    updateFan(tempC, fire);
   }
   updateNeoPixelForTemp(tempC);
   digitalWrite(PIN_ONBOARD_LED, fire ? HIGH : LOW);

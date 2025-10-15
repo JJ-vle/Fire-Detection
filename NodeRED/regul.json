@@ -1,0 +1,550 @@
+[
+    {
+        "id": "073bedcadc2a0062",
+        "type": "function",
+        "z": "7841974d3600c782",
+        "name": "multiple msg",
+        "func": "let d = msg.payload;\n\n// si string => parse\nif (typeof d === \"string\") {\n    try {\n        d = JSON.parse(d);\n    } catch (e) {\n        node.error(\"JSON invalide: \" + e.message);\n        return null;\n    }\n}\n\n// Valeurs numériques\nconst temp = Number(d?.temperature_c);\nconst light = Number(d?.light_avg ?? d?.light_raw);\nconst pwm = Number(d?.actuators?.fan_pwm ?? 0);\n\n// Fan en %\nconst PWM_MAX = 255;   // max pour calculer %\nconst fanPct = Math.round(Math.max(0, Math.min(pwm, PWM_MAX)) * 100 / PWM_MAX);\n\n// Etats ON/OFF\nconst heatOn = !!d?.actuators?.heat;\nconst climOn = !!d?.actuators?.clim;\nconst fireOn = !!d?.fire_detected;\n\n// Seuils\nconst threshLow = Number(d?.thresholds?.low ?? 0);\nconst threshHigh = Number(d?.thresholds?.high ?? 0);\n\n// Messages vers 8 sorties\nconst msgTemp = { payload: temp, topic: \"Température (°C)\", ts: d?.timestamp_ms };\nconst msgLight = { payload: light, topic: \"Lumière\", ts: d?.timestamp_ms };\nconst msgHeat = { payload: heatOn, topic: \"Chaleur\" };\nconst msgClim = { payload: climOn, topic: \"Clim\" };\nconst msgFan = { payload: fanPct, topic: \"Fan (%)\" };\n\nconst msgFire = { payload: fireOn ? \"ON\" : \"OFF\", topic: \"Feu détecté\" };\nconst msgThLow = { payload: threshLow, topic: \"Seuil bas (°C)\" };\nconst msgThHigh = { payload: threshHigh, topic: \"Seuil haut (°C)\" };\n\n//return [msgTemp, msgLight, msgHeat, msgClim, msgFan];\nreturn [msgTemp, msgLight, msgHeat, msgClim, msgFan, msgFire, msgThLow, msgThHigh];\n",
+        "outputs": 8,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 380,
+        "wires": [
+            [
+                "3ab6ed17abe21cb5"
+            ],
+            [
+                "8e14707ac25130c2"
+            ],
+            [
+                "15e1fb8f60c50189"
+            ],
+            [
+                "fd2435ecaebcd466"
+            ],
+            [
+                "d92a25069da28ff1"
+            ],
+            [
+                "73c9961373414975"
+            ],
+            [
+                "1a8e034e99e367d6"
+            ],
+            [
+                "650470ccae73c907"
+            ]
+        ]
+    },
+    {
+        "id": "d92a25069da28ff1",
+        "type": "ui_gauge",
+        "z": "7841974d3600c782",
+        "name": "",
+        "group": "4f44463240bdc8ce",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "gtype": "gage",
+        "title": "RPM",
+        "label": "units",
+        "format": "{{value}}",
+        "min": 0,
+        "max": "100",
+        "colors": [
+            "#00b500",
+            "#e6e600",
+            "#ca3838"
+        ],
+        "seg1": "",
+        "seg2": "",
+        "diff": false,
+        "className": "",
+        "x": 650,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "8e14707ac25130c2",
+        "type": "ui_chart",
+        "z": "7841974d3600c782",
+        "name": "",
+        "group": "c24d18247b74bebf",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "label": "Lumière",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 660,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "3ab6ed17abe21cb5",
+        "type": "ui_chart",
+        "z": "7841974d3600c782",
+        "name": "",
+        "group": "c24d18247b74bebf",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "label": "Température",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "",
+        "ymax": "",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 670,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ecd9fe727f70584e",
+        "type": "serial in",
+        "z": "7841974d3600c782",
+        "name": "Serial Port",
+        "serial": "2987e5b6304ec67b",
+        "x": 200,
+        "y": 320,
+        "wires": [
+            [
+                "6ee11f7b532a292d"
+            ]
+        ]
+    },
+    {
+        "id": "6ee11f7b532a292d",
+        "type": "json",
+        "z": "7841974d3600c782",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 230,
+        "y": 380,
+        "wires": [
+            [
+                "073bedcadc2a0062",
+                "0f8d5edad57f2df7"
+            ]
+        ]
+    },
+    {
+        "id": "e60052aaf2096297",
+        "type": "serial out",
+        "z": "7841974d3600c782",
+        "name": "Serial Port out Min Temp",
+        "serial": "2987e5b6304ec67b",
+        "x": 890,
+        "y": 640,
+        "wires": []
+    },
+    {
+        "id": "3e89ce7e9e469ea1",
+        "type": "ui_slider",
+        "z": "7841974d3600c782",
+        "name": "",
+        "label": "Température Maximum",
+        "tooltip": "",
+        "group": "35c8d8e5b9c455f3",
+        "order": 1,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "outs": "all",
+        "topic": "topic",
+        "topicType": "msg",
+        "min": "-20",
+        "max": "50",
+        "step": "0",
+        "className": "",
+        "x": 360,
+        "y": 520,
+        "wires": [
+            [
+                "650470ccae73c907",
+                "42ab07ad7e3a0b42"
+            ]
+        ]
+    },
+    {
+        "id": "b8db5a15e2201e10",
+        "type": "serial out",
+        "z": "7841974d3600c782",
+        "name": "Serial Port out Max Temp",
+        "serial": "2987e5b6304ec67b",
+        "x": 890,
+        "y": 600,
+        "wires": []
+    },
+    {
+        "id": "5611ba6055a268bc",
+        "type": "ui_slider",
+        "z": "7841974d3600c782",
+        "name": "",
+        "label": "Température Minimum",
+        "tooltip": "",
+        "group": "35c8d8e5b9c455f3",
+        "order": 3,
+        "width": 0,
+        "height": 0,
+        "passthru": true,
+        "outs": "all",
+        "topic": "topic",
+        "topicType": "msg",
+        "min": "-20",
+        "max": "50",
+        "step": "0",
+        "className": "",
+        "x": 360,
+        "y": 560,
+        "wires": [
+            [
+                "1a8e034e99e367d6",
+                "f67161e394bd74f7"
+            ]
+        ]
+    },
+    {
+        "id": "650470ccae73c907",
+        "type": "ui_text",
+        "z": "7841974d3600c782",
+        "group": "35c8d8e5b9c455f3",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "name": "Tmax",
+        "label": "",
+        "format": "{{msg.payload}} °C",
+        "layout": "row-center",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 650,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "1a8e034e99e367d6",
+        "type": "ui_text",
+        "z": "7841974d3600c782",
+        "group": "35c8d8e5b9c455f3",
+        "order": 4,
+        "width": 0,
+        "height": 0,
+        "name": "Tmin",
+        "label": "",
+        "format": "{{msg.payload}} °C",
+        "layout": "row-center",
+        "className": "",
+        "style": false,
+        "font": "",
+        "fontSize": 16,
+        "color": "#000000",
+        "x": 650,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "42ab07ad7e3a0b42",
+        "type": "function",
+        "z": "7841974d3600c782",
+        "name": "msg MAX",
+        "func": "// pour MAX\nmsg.payload = \"MAX:\" + msg.payload + \"\\n\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 660,
+        "y": 600,
+        "wires": [
+            [
+                "b8db5a15e2201e10"
+            ]
+        ]
+    },
+    {
+        "id": "f67161e394bd74f7",
+        "type": "function",
+        "z": "7841974d3600c782",
+        "name": "msg MIN",
+        "func": "// pour MIN\nmsg.payload = \"MIN:\" + msg.payload + \"\\n\";\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 660,
+        "y": 640,
+        "wires": [
+            [
+                "e60052aaf2096297"
+            ]
+        ]
+    },
+    {
+        "id": "0f8d5edad57f2df7",
+        "type": "debug",
+        "z": "7841974d3600c782",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 660,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "fd2435ecaebcd466",
+        "type": "ui_led",
+        "z": "7841974d3600c782",
+        "order": 1,
+        "group": "d4cb5308e24924ab",
+        "width": 0,
+        "height": 0,
+        "label": "Clim",
+        "labelPlacement": "left",
+        "labelAlignment": "left",
+        "colorForValue": [
+            {
+                "color": "#ff0000",
+                "value": "false",
+                "valueType": "bool"
+            },
+            {
+                "color": "#008000",
+                "value": "true",
+                "valueType": "bool"
+            }
+        ],
+        "allowColorForValueInMessage": false,
+        "shape": "circle",
+        "showGlow": true,
+        "name": "LED L",
+        "x": 650,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "15e1fb8f60c50189",
+        "type": "ui_led",
+        "z": "7841974d3600c782",
+        "order": 2,
+        "group": "d4cb5308e24924ab",
+        "width": 0,
+        "height": 0,
+        "label": "Radiateur",
+        "labelPlacement": "left",
+        "labelAlignment": "left",
+        "colorForValue": [
+            {
+                "color": "#ff0000",
+                "value": "false",
+                "valueType": "bool"
+            },
+            {
+                "color": "#008000",
+                "value": "true",
+                "valueType": "bool"
+            }
+        ],
+        "allowColorForValueInMessage": false,
+        "shape": "circle",
+        "showGlow": true,
+        "name": "LED R",
+        "x": 650,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "73c9961373414975",
+        "type": "ui_led",
+        "z": "7841974d3600c782",
+        "order": 1,
+        "group": "206ffe6621f1faa0",
+        "width": 0,
+        "height": 0,
+        "label": "Status",
+        "labelPlacement": "left",
+        "labelAlignment": "left",
+        "colorForValue": [
+            {
+                "color": "#ff0000",
+                "value": "OFF",
+                "valueType": "str"
+            },
+            {
+                "color": "#008000",
+                "value": "ON",
+                "valueType": "str"
+            }
+        ],
+        "allowColorForValueInMessage": false,
+        "shape": "circle",
+        "showGlow": true,
+        "name": "LED Feu",
+        "x": 660,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "4f44463240bdc8ce",
+        "type": "ui_group",
+        "name": "Données du ventilateur",
+        "tab": "dad933b69f79d1a6",
+        "order": 5,
+        "disp": true,
+        "width": 10,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "c24d18247b74bebf",
+        "type": "ui_group",
+        "name": "Graphiques",
+        "tab": "dad933b69f79d1a6",
+        "order": 4,
+        "disp": true,
+        "width": 8,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "2987e5b6304ec67b",
+        "type": "serial-port",
+        "name": "Serial Port",
+        "serialport": "COM3",
+        "serialbaud": "115200",
+        "databits": 8,
+        "parity": "none",
+        "stopbits": 1,
+        "waitfor": "",
+        "dtr": "none",
+        "rts": "none",
+        "cts": "none",
+        "dsr": "none",
+        "newline": "\\n",
+        "bin": "false",
+        "out": "char",
+        "addchar": "",
+        "responsetimeout": 10000
+    },
+    {
+        "id": "35c8d8e5b9c455f3",
+        "type": "ui_group",
+        "name": "Limites de température",
+        "tab": "dad933b69f79d1a6",
+        "order": 1,
+        "disp": true,
+        "width": 8,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "d4cb5308e24924ab",
+        "type": "ui_group",
+        "name": "Status des controlleurs de température",
+        "tab": "dad933b69f79d1a6",
+        "order": 3,
+        "disp": true,
+        "width": 7,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "206ffe6621f1faa0",
+        "type": "ui_group",
+        "name": "Feu détécté ? ",
+        "tab": "dad933b69f79d1a6",
+        "order": 4,
+        "disp": true,
+        "width": 8,
+        "collapse": false,
+        "className": ""
+    },
+    {
+        "id": "dad933b69f79d1a6",
+        "type": "ui_tab",
+        "name": "Home",
+        "icon": "dashboard",
+        "disabled": false,
+        "hidden": false
+    },
+    {
+        "id": "0ae2f2c97b3ff39a",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-dashboard": "3.6.6",
+            "node-red-node-serialport": "2.0.3",
+            "node-red-contrib-ui-led": "0.4.11"
+        }
+    }
+]

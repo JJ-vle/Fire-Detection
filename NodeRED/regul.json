@@ -1,8 +1,8 @@
 [
     {
-        "id": "073bedcadc2a0062",
+        "id": "d3138f86eb9e7eb6",
         "type": "function",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "multiple msg",
         "func": "let d = msg.payload;\n\n// si string => parse\nif (typeof d === \"string\") {\n    try {\n        d = JSON.parse(d);\n    } catch (e) {\n        node.error(\"JSON invalide: \" + e.message);\n        return null;\n    }\n}\n\n// Valeurs numériques\nconst temp = Number(d?.temperature_c);\nconst light = Number(d?.light_avg ?? d?.light_raw);\nconst pwm = Number(d?.actuators?.fan_pwm ?? 0);\n\n// Fan en %\nconst PWM_MAX = 255;   // max pour calculer %\nconst fanPct = Math.round(Math.max(0, Math.min(pwm, PWM_MAX)) * 100 / PWM_MAX);\n\n// Etats ON/OFF\nconst heatOn = !!d?.actuators?.heat;\nconst climOn = !!d?.actuators?.clim;\nconst fireOn = !!d?.fire_detected;\n\n// Seuils\nconst threshLow = Number(d?.thresholds?.low ?? 0);\nconst threshHigh = Number(d?.thresholds?.high ?? 0);\n\n// Messages vers 8 sorties\nconst msgTemp = { payload: temp, topic: \"Température (°C)\", ts: d?.timestamp_ms };\nconst msgLight = { payload: light, topic: \"Lumière\", ts: d?.timestamp_ms };\nconst msgHeat = { payload: heatOn, topic: \"Chaleur\" };\nconst msgClim = { payload: climOn, topic: \"Clim\" };\nconst msgFan = { payload: fanPct, topic: \"Fan (%)\" };\n\nconst msgFire = { payload: fireOn ? \"ON\" : \"OFF\", topic: \"Feu détecté\" };\nconst msgThLow = { payload: threshLow, topic: \"Seuil bas (°C)\" };\nconst msgThHigh = { payload: threshHigh, topic: \"Seuil haut (°C)\" };\n\n//return [msgTemp, msgLight, msgHeat, msgClim, msgFan];\nreturn [msgTemp, msgLight, msgHeat, msgClim, msgFan, msgFire, msgThLow, msgThHigh];\n",
         "outputs": 8,
@@ -11,47 +11,48 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 390,
-        "y": 380,
+        "x": 470,
+        "y": 600,
         "wires": [
             [
-                "3ab6ed17abe21cb5"
+                "9f602d63fb280aeb"
             ],
             [
-                "8e14707ac25130c2"
+                "fef5ff9328233a56"
             ],
             [
-                "15e1fb8f60c50189"
+                "687a5c7b9d6242a8"
             ],
             [
-                "fd2435ecaebcd466"
+                "4371b93f8a27fde1"
             ],
             [
-                "d92a25069da28ff1"
+                "a79d5da8ba7cc451",
+                "0521b275bf675798"
             ],
             [
-                "73c9961373414975"
+                "82268f5c8d1e7c9c"
             ],
             [
-                "1a8e034e99e367d6"
+                "f174c31fa7f5a013"
             ],
             [
-                "650470ccae73c907"
+                "b53ac7665a285a3f"
             ]
         ]
     },
     {
-        "id": "d92a25069da28ff1",
+        "id": "a79d5da8ba7cc451",
         "type": "ui_gauge",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "",
         "group": "4f44463240bdc8ce",
         "order": 1,
         "width": 0,
         "height": 0,
         "gtype": "gage",
-        "title": "RPM",
-        "label": "units",
+        "title": "Fan",
+        "label": "%",
         "format": "{{value}}",
         "min": 0,
         "max": "100",
@@ -64,14 +65,14 @@
         "seg2": "",
         "diff": false,
         "className": "",
-        "x": 650,
-        "y": 420,
+        "x": 730,
+        "y": 640,
         "wires": []
     },
     {
-        "id": "8e14707ac25130c2",
+        "id": "fef5ff9328233a56",
         "type": "ui_chart",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "",
         "group": "c24d18247b74bebf",
         "order": 1,
@@ -106,16 +107,16 @@
         "outputs": 1,
         "useDifferentColor": false,
         "className": "",
-        "x": 660,
-        "y": 300,
+        "x": 740,
+        "y": 520,
         "wires": [
             []
         ]
     },
     {
-        "id": "3ab6ed17abe21cb5",
+        "id": "9f602d63fb280aeb",
         "type": "ui_chart",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "",
         "group": "c24d18247b74bebf",
         "order": 2,
@@ -150,57 +151,57 @@
         "outputs": 1,
         "useDifferentColor": false,
         "className": "",
-        "x": 670,
-        "y": 260,
+        "x": 750,
+        "y": 480,
         "wires": [
             []
         ]
     },
     {
-        "id": "ecd9fe727f70584e",
+        "id": "ad8301ab9d11125f",
         "type": "serial in",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "Serial Port",
         "serial": "2987e5b6304ec67b",
-        "x": 200,
-        "y": 320,
+        "x": 280,
+        "y": 540,
         "wires": [
             [
-                "6ee11f7b532a292d"
+                "f5a65f08f4d17656"
             ]
         ]
     },
     {
-        "id": "6ee11f7b532a292d",
+        "id": "f5a65f08f4d17656",
         "type": "json",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "",
         "property": "payload",
         "action": "",
         "pretty": false,
-        "x": 230,
-        "y": 380,
+        "x": 310,
+        "y": 600,
         "wires": [
             [
-                "073bedcadc2a0062",
-                "0f8d5edad57f2df7"
+                "d3138f86eb9e7eb6",
+                "f8ea20c54c15ed56"
             ]
         ]
     },
     {
-        "id": "e60052aaf2096297",
+        "id": "f886c3a8487bf75e",
         "type": "serial out",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "Serial Port out Min Temp",
         "serial": "2987e5b6304ec67b",
-        "x": 890,
-        "y": 640,
+        "x": 970,
+        "y": 860,
         "wires": []
     },
     {
-        "id": "3e89ce7e9e469ea1",
+        "id": "827580eabf268851",
         "type": "ui_slider",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "",
         "label": "Température Maximum",
         "tooltip": "",
@@ -216,29 +217,29 @@
         "max": "50",
         "step": "0",
         "className": "",
-        "x": 360,
-        "y": 520,
+        "x": 440,
+        "y": 740,
         "wires": [
             [
-                "650470ccae73c907",
-                "42ab07ad7e3a0b42"
+                "b53ac7665a285a3f",
+                "043c1557eb9ea278"
             ]
         ]
     },
     {
-        "id": "b8db5a15e2201e10",
+        "id": "9e5b85fc571a9230",
         "type": "serial out",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "Serial Port out Max Temp",
         "serial": "2987e5b6304ec67b",
-        "x": 890,
-        "y": 600,
+        "x": 970,
+        "y": 820,
         "wires": []
     },
     {
-        "id": "5611ba6055a268bc",
+        "id": "e77b343c803a6590",
         "type": "ui_slider",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "",
         "label": "Température Minimum",
         "tooltip": "",
@@ -254,19 +255,19 @@
         "max": "50",
         "step": "0",
         "className": "",
-        "x": 360,
-        "y": 560,
+        "x": 440,
+        "y": 780,
         "wires": [
             [
-                "1a8e034e99e367d6",
-                "f67161e394bd74f7"
+                "f174c31fa7f5a013",
+                "2772764fccfb6e86"
             ]
         ]
     },
     {
-        "id": "650470ccae73c907",
+        "id": "b53ac7665a285a3f",
         "type": "ui_text",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "group": "35c8d8e5b9c455f3",
         "order": 2,
         "width": 0,
@@ -280,14 +281,14 @@
         "font": "",
         "fontSize": 16,
         "color": "#000000",
-        "x": 650,
-        "y": 520,
+        "x": 730,
+        "y": 740,
         "wires": []
     },
     {
-        "id": "1a8e034e99e367d6",
+        "id": "f174c31fa7f5a013",
         "type": "ui_text",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "group": "35c8d8e5b9c455f3",
         "order": 4,
         "width": 0,
@@ -301,14 +302,14 @@
         "font": "",
         "fontSize": 16,
         "color": "#000000",
-        "x": 650,
-        "y": 560,
+        "x": 730,
+        "y": 780,
         "wires": []
     },
     {
-        "id": "42ab07ad7e3a0b42",
+        "id": "043c1557eb9ea278",
         "type": "function",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "msg MAX",
         "func": "// pour MAX\nmsg.payload = \"MAX:\" + msg.payload + \"\\n\";\nreturn msg;",
         "outputs": 1,
@@ -317,18 +318,18 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 660,
-        "y": 600,
+        "x": 740,
+        "y": 820,
         "wires": [
             [
-                "b8db5a15e2201e10"
+                "9e5b85fc571a9230"
             ]
         ]
     },
     {
-        "id": "f67161e394bd74f7",
+        "id": "2772764fccfb6e86",
         "type": "function",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "msg MIN",
         "func": "// pour MIN\nmsg.payload = \"MIN:\" + msg.payload + \"\\n\";\nreturn msg;",
         "outputs": 1,
@@ -337,18 +338,18 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 660,
-        "y": 640,
+        "x": 740,
+        "y": 860,
         "wires": [
             [
-                "e60052aaf2096297"
+                "f886c3a8487bf75e"
             ]
         ]
     },
     {
-        "id": "0f8d5edad57f2df7",
+        "id": "f8ea20c54c15ed56",
         "type": "debug",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "name": "debug 1",
         "active": true,
         "tosidebar": true,
@@ -357,14 +358,14 @@
         "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 660,
-        "y": 200,
+        "x": 740,
+        "y": 420,
         "wires": []
     },
     {
-        "id": "fd2435ecaebcd466",
+        "id": "4371b93f8a27fde1",
         "type": "ui_led",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "order": 1,
         "group": "d4cb5308e24924ab",
         "width": 0,
@@ -388,14 +389,14 @@
         "shape": "circle",
         "showGlow": true,
         "name": "LED L",
-        "x": 650,
-        "y": 380,
+        "x": 730,
+        "y": 600,
         "wires": []
     },
     {
-        "id": "15e1fb8f60c50189",
+        "id": "687a5c7b9d6242a8",
         "type": "ui_led",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "order": 2,
         "group": "d4cb5308e24924ab",
         "width": 0,
@@ -419,14 +420,14 @@
         "shape": "circle",
         "showGlow": true,
         "name": "LED R",
-        "x": 650,
-        "y": 340,
+        "x": 730,
+        "y": 560,
         "wires": []
     },
     {
-        "id": "73c9961373414975",
+        "id": "82268f5c8d1e7c9c",
         "type": "ui_led",
-        "z": "7841974d3600c782",
+        "z": "469cbb6a8fa81cf2",
         "order": 1,
         "group": "206ffe6621f1faa0",
         "width": 0,
@@ -450,16 +451,60 @@
         "shape": "circle",
         "showGlow": true,
         "name": "LED Feu",
-        "x": 660,
-        "y": 460,
+        "x": 740,
+        "y": 680,
         "wires": []
+    },
+    {
+        "id": "0521b275bf675798",
+        "type": "ui_chart",
+        "z": "469cbb6a8fa81cf2",
+        "name": "",
+        "group": "4f44463240bdc8ce",
+        "order": 2,
+        "width": 0,
+        "height": 0,
+        "label": "Fan Graph",
+        "chartType": "line",
+        "legend": "false",
+        "xformat": "HH:mm:ss",
+        "interpolate": "linear",
+        "nodata": "",
+        "dot": false,
+        "ymin": "0",
+        "ymax": "100",
+        "removeOlder": 1,
+        "removeOlderPoints": "",
+        "removeOlderUnit": "3600",
+        "cutout": 0,
+        "useOneColor": false,
+        "useUTC": false,
+        "colors": [
+            "#1f77b4",
+            "#aec7e8",
+            "#ff7f0e",
+            "#2ca02c",
+            "#98df8a",
+            "#d62728",
+            "#ff9896",
+            "#9467bd",
+            "#c5b0d5"
+        ],
+        "outputs": 1,
+        "useDifferentColor": false,
+        "className": "",
+        "x": 870,
+        "y": 640,
+        "wires": [
+            []
+        ]
     },
     {
         "id": "4f44463240bdc8ce",
         "type": "ui_group",
         "name": "Données du ventilateur",
         "tab": "dad933b69f79d1a6",
-        "order": 5,
+        "order": 10,
         "disp": true,
         "width": 10,
         "collapse": false,
@@ -470,7 +515,7 @@
         "type": "ui_group",
         "name": "Graphiques",
         "tab": "dad933b69f79d1a6",
-        "order": 4,
+        "order": 8,
         "disp": true,
         "width": 8,
         "collapse": false,
@@ -501,7 +546,7 @@
         "type": "ui_group",
         "name": "Limites de température",
         "tab": "dad933b69f79d1a6",
-        "order": 1,
+        "order": 2,
         "disp": true,
         "width": 8,
         "collapse": false,
@@ -512,7 +557,7 @@
         "type": "ui_group",
         "name": "Status des controlleurs de température",
         "tab": "dad933b69f79d1a6",
-        "order": 3,
+        "order": 6,
         "disp": true,
         "width": 7,
         "collapse": false,
@@ -538,7 +583,7 @@
         "hidden": false
     },
     {
-        "id": "0ae2f2c97b3ff39a",
+        "id": "f9818076eb0510f4",
         "type": "global-config",
         "env": [],
         "modules": {

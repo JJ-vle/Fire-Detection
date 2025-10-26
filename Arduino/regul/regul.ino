@@ -34,6 +34,51 @@ void handleSerialInput() {
   }
 }
 
+void sendStatusJson(float tempC, int lightVal, int lightAvg, bool fire, unsigned long now) {
+  DynamicJsonDocument doc(512);
+  doc["timestamp_ms"] = now;
+  if (isnan(tempC)) {
+    doc["temperature_c"] = nullptr;
+  } else {
+    doc["temperature_c"] = tempC;
+  }
+
+  JsonObject actuators = doc.createNestedObject("actuators");
+  actuators["fan_pwm"] = fanDuty;
+  actuators["clim"] = (bool)digitalRead(PIN_CLIM);
+  actuators["heat"] = (bool)digitalRead(PIN_HEAT);
+
+  doc["light_raw"] = lightVal;
+  doc["light_avg"] = lightAvg;
+  doc["fire_detected"] = fire;
+
+  JsonObject thresholds = doc.createNestedObject("thresholds");
+  thresholds["low"] = SEUIL_BAS;
+  thresholds["high"] = SEUIL_HAUT;
+
+  serializeJson(doc, Serial);
+  Serial.println();
+}
+
+void updateSensorsAndActuators() {
+  float tempC = readTemperature();
+  int lightVal = readLight();
+  pushLightValue(lightVal);
+  int lightAvg = lightAverage();
+  bool fire = detectFire(lightVal);
+
+  if (!isnan(tempC)) {
+    controlTemperature(tempC);
+    updateFan(tempC, fire);
+  }
+
+  updateNeoPixelForTemp(tempC);
+  digitalWrite(PIN_ONBOARD_LED, fire ? HIGH : LOW);
+
+  sendStatusJson(tempC, lightVal, lightAvg, fire, millis());
+}
+
+
 // initialiser
 void setup() {
   Serial.begin(115200);
@@ -52,47 +97,14 @@ void setup() {
 }
 
 void loop() {
-
   handleSerialInput();
 
+  static unsigned long lastPrint = 0;
   unsigned long now = millis();
-  if (now - lastPrint < LOOP_DELAY_MS) return;
-  lastPrint = now;
 
-  // lecture
-  float tempC = readTemperature();
-  int lightVal = readLight();
-  pushLightValue(lightVal);
-  int lightAvg = lightAverage();
-  bool fire = detectFire(lightVal);
-
-  // actions
-  if (!isnan(tempC)) {
-    controlTemperature(tempC);
-    updateFan(tempC, fire);
+  if (now - lastPrint >= LOOP_DELAY_MS) {
+    lastPrint = now;
+    updateSensorsAndActuators();
   }
-  updateNeoPixelForTemp(tempC);
-  digitalWrite(PIN_ONBOARD_LED, fire ? HIGH : LOW);
-
-  // JSON
-  DynamicJsonDocument doc(512);
-  doc["timestamp_ms"] = now;
-  if (isnan(tempC)) {
-    doc["temperature_c"] = nullptr;
-  } else {
-    doc["temperature_c"] = tempC;
-  }
-  JsonObject actuators = doc.createNestedObject("actuators");
-  actuators["fan_pwm"] = fanDuty;
-  actuators["clim"] = (bool)digitalRead(PIN_CLIM);
-  actuators["heat"] = (bool)digitalRead(PIN_HEAT);
-  doc["light_raw"] = lightVal;
-  doc["light_avg"] = lightAvg;
-  doc["fire_detected"] = fire;
-  JsonObject thresholds = doc.createNestedObject("thresholds");
-  thresholds["low"] = SEUIL_BAS;
-  thresholds["high"] = SEUIL_HAUT;
-
-  serializeJson(doc, Serial);
-  Serial.println();
 }
+

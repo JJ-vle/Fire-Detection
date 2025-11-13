@@ -1,11 +1,8 @@
 // regul.ino
 #include <ArduinoJson.h>
-
 #include "config.h"
-#include "light.h"
-#include "temperature.h"
-#include "fan.h"
-#include "neopixel.h"
+#include "sensors.h"
+#include "actuators.h"
 
 // définition des variables globales
 float SEUIL_BAS = 26.0;

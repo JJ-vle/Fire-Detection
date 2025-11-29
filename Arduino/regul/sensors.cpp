@@ -1,4 +1,3 @@
-//sensors.cpp
 #include "sensors.h"
 #include "config.h"
 #include <OneWire.h>

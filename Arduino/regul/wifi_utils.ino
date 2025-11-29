@@ -1,4 +1,3 @@
-//wifi_utils.ino
 /*** Basic/Static Wifi connection
      Fichier wificonnect/wifi_utils.ino ***/
 
@@ -25,7 +24,6 @@ String translateEncryptionType(wifi_auth_mode_t encryptionType) {
   case (WIFI_AUTH_WPA2_ENTERPRISE):
     return "WPA2_ENTERPRISE";
   }
-  return "NONE";
 }
 /*--------------------------------------------------------------------------*/
 void wifi_printstatus(int C){
@@ -117,9 +115,10 @@ void wifi_connect_multi(String hostname){
   wm.addAP("HUAWEI-6EC2", "FGY9MLBL");
   wm.addAP("HUAWEI-553A", "QTM06RTT");
   wm.addAP("GMAP", "vijx47050");
-  wm.addAP("Bbox-EA6814CF","Hvtx6bGfD4Sn7PCs2r");
-  wm.addAP("Oui", "miraculous");
+  wm.addAP("Bbox-EA6814CF", "Hvtx6bGfD4Sn7PCs2r");
+  wm.addAP("IOT", "iotmiage");
   wm.addAP("proutphone", "PatateChantilly");
+
   
   WiFi.mode(WIFI_OFF);   
   WiFi.mode(WIFI_STA); // Set WiFi to station mode 

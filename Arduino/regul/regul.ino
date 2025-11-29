@@ -1,85 +1,37 @@
 //regul.ino
 #include <ArduinoJson.h>
-#include <WiFi.h>
-#include "AsyncTCP.h"
-#include "ESPAsyncWebServer.h"
-#include "FS.h"
-#include <LittleFS.h>
-
 #include "config.h"
 #include "sensors.h"
 #include "actuators.h"
-#include "routes.h"
 #include "wifi_utils.h"
-
-#define USE_SERIAL Serial
+#include "mqtt_client.h"
 
 // définition des variables globales
-extern int fanDuty;
-String last_temp = "N/A";
-String last_light = "0";
-
 float SEUIL_BAS = 26.0;
 float SEUIL_HAUT = 28.0;
-float SOUS_SEUIL_FAN = 27.0;
+float SOUS_SEUIL_FAN = 0;
 
 unsigned long lastPrint = 0;
 const unsigned long LOOP_DELAY_MS = 1000;
 
-AsyncWebServer server(80);
-
-void handleSerialInput();
-void sendStatusJson(float tempC, int lightVal, int lightAvg, bool fire, unsigned long now);
-void updateSensorsAndActuators();
-
-// initialiser
-void setup() {
-  USE_SERIAL.begin(115200);
-  delay(100);
-
-  pinMode(PIN_CLIM, OUTPUT);
-  pinMode(PIN_HEAT, OUTPUT);
-  pinMode(PIN_ONBOARD_LED, OUTPUT);
-
-  initTemperature();
-  initFan();
-  initLight();
-  initNeoPixel();
-
-  SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
-
-  String hostname = "Mon_petit_objet_ESP32";
-  wifi_connect_multi(hostname);
-
-  if (!LittleFS.begin(true)) {
-    USE_SERIAL.println("LittleFS mount error");
-  }
-
-  setup_http_routes(&server);
-  server.begin();
-}
-void loop() {
-  handleSerialInput();
-
-  unsigned long now = millis();
-  if (now - lastPrint >= LOOP_DELAY_MS) {
-    lastPrint = now;
-    updateSensorsAndActuators();
-  }
-}
+String lastStatusJson;
+String hostname = "Mon petit objet ESP32";
 
 // gestion des commandes reçues sur le port série
 void handleSerialInput() {
   if (!Serial.available()) return;
+
   String input = Serial.readStringUntil('\n');
   input.trim();
 
-  if (input.startsWith("MAX:")) {
-    SEUIL_HAUT = input.substring(4).toFloat();
+  if (input.startsWith("MAX:")) { // changer seuil haut
+    float newMax = input.substring(4).toFloat();
+    SEUIL_HAUT = newMax;
     SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
-  }
-  else if (input.startsWith("MIN:")) {
-    SEUIL_BAS = input.substring(4).toFloat();
+  } 
+  else if (input.startsWith("MIN:")) {  // changer seuil bas
+    float newMin = input.substring(4).toFloat();
+    SEUIL_BAS = newMin;
     SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
   }
 }
@@ -93,36 +45,41 @@ void sendStatusJson(float tempC, int lightVal, int lightAvg, bool fire, unsigned
     doc["temperature_c"] = tempC;
   }
 
-  JsonObject actu = doc.createNestedObject("actuators");
-  actu["fan_pwm"] = fanDuty;
-  actu["clim"] = (bool)digitalRead(PIN_CLIM);
-  actu["heat"] = (bool)digitalRead(PIN_HEAT);
+  /********** RENDU PISCINE ************/
+  doc["name"] = "JJT";
+  doc["lat"] = 43.7032; doc["lon"] = 7.2660; //MANDELIEU LA NAPOULE
+
+  JsonObject info = doc.createNestedObject("info");
+  info["ident"] = "JJT";
+
+  JsonObject piscine = doc.createNestedObject("piscine");
+  piscine["occuped"] = (lightVal > 700);
+  piscine["hotspot"] = false;
+
+
+  JsonObject actuators = doc.createNestedObject("actuators");
+  actuators["fan_pwm"] = fanDuty;
+  actuators["clim"] = (bool)digitalRead(PIN_CLIM);
+  actuators["heat"] = (bool)digitalRead(PIN_HEAT);
 
   doc["light_raw"] = lightVal;
   doc["light_avg"] = lightAvg;
   doc["fire_detected"] = fire;
 
-  JsonObject th = doc.createNestedObject("thresholds");
-  th["low"] = SEUIL_BAS;
-  th["high"] = SEUIL_HAUT;
+  JsonObject thresholds = doc.createNestedObject("thresholds");
+  thresholds["low"] = SEUIL_BAS;
+  thresholds["high"] = SEUIL_HAUT;
 
-  // === Infos WiFi ===
-  JsonObject wifi = doc.createNestedObject("wifi");
-  wifi["ssid"] = WiFi.SSID();
-  wifi["mac"] = WiFi.macAddress();
-  wifi["ip"] = WiFi.localIP().toString();
-  wifi["rssi_dbm"] = WiFi.RSSI();
-  wifi["rssi_percent"] = constrain(2 * (WiFi.RSSI() + 100), 0, 100);
-
-  serializeJson(doc, Serial);
-  Serial.println();
+  // ---- MAJ de la variable globale ----
+  lastStatusJson.clear();
+  serializeJson(doc, lastStatusJson);
 }
 
 void updateSensorsAndActuators() {
+  unsigned long now = millis();
   float tempC = readTemperature();
   int lightVal = readLight();
   pushLightValue(lightVal);
-
   int lightAvg = lightAverage();
   bool fire = detectFire(lightVal);
 
@@ -134,8 +91,52 @@ void updateSensorsAndActuators() {
   updateNeoPixelForTemp(tempC);
   digitalWrite(PIN_ONBOARD_LED, fire ? HIGH : LOW);
 
-  last_temp = isnan(tempC) ? "N/A" : String(tempC, 2);
-  last_light = String(lightVal);
+  sendStatusJson(tempC, lightVal, lightAvg, fire, now);
 
-  sendStatusJson(tempC, lightVal, lightAvg, fire, millis());
+  // ---- affichage Serial ----
+  //Serial.println(lastStatusJson);
+
+  sendMQTT(TOPIC_PUBLISH, lastStatusJson);
 }
+
+// initialiser
+void setup() {
+  Serial.begin(115200);
+  delay(100);
+
+  pinMode(PIN_CLIM, OUTPUT);
+  pinMode(PIN_HEAT, OUTPUT);
+  pinMode(PIN_ONBOARD_LED, OUTPUT);
+
+  initTemperature();
+  initFan();
+  initLight();
+  initNeoPixel();
+  
+  // --- WIFI & MQTT SETUP ---
+  wifi_connect_multi(hostname); 
+  initMQTT(); // Initialise le client MQTT
+  
+  Serial.println(WiFi.localIP());
+  // ------------------------
+
+  SOUS_SEUIL_FAN = (SEUIL_HAUT + SEUIL_BAS) / 2.0;
+}
+
+void loop() {
+  // --- MAINTIEN DE LA CONNEXION ---
+  handleMQTT(); 
+  // --------------------------------
+
+  handleSerialInput();
+
+  unsigned long now = millis();
+
+  if (now - lastPrint >= LOOP_DELAY_MS) {
+    lastPrint = now;
+    updateSensorsAndActuators();
+  }
+
+  //delay(5000);
+}
+

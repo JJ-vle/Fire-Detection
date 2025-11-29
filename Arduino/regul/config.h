@@ -33,3 +33,7 @@ const unsigned long FIRE_HOLD_TIME_MS = 3000; // garder l'état feu 3s minimum
 const int PWM_FREQ = 5000;
 const int PWM_RESOLUTION = 8;
 const int FAN_CHANNEL = 3;
+
+//JSON
+extern String lastStatusJson;
+

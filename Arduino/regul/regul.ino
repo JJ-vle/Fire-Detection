@@ -132,7 +132,7 @@ void loop() {
   // --- MAINTIEN DE LA CONNEXION ---
   handleMQTT(); 
   // --------------------------------
-
+  Serial.println(get_hotspot_status());
   handleSerialInput();
 
   unsigned long now = millis();

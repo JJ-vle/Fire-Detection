@@ -5,6 +5,7 @@
 #include "actuators.h"
 #include "wifi_utils.h"
 #include "mqtt_client.h"
+#include "piscine_utils.h"
 
 // définition des variables globales
 float SEUIL_BAS = 26.0;
@@ -16,6 +17,10 @@ const unsigned long LOOP_DELAY_MS = 1000;
 
 String lastStatusJson;
 String hostname = "Mon petit objet ESP32";
+
+String my_ident = "P_dt210745"; // VOTRE ID ICI
+float my_lat = 43.7032; float my_lon = 7.2660; //MANDELIEU LA NAPOULE
+float my_current_temp;
 
 // gestion des commandes reçues sur le port série
 void handleSerialInput() {
@@ -43,19 +48,19 @@ void sendStatusJson(float tempC, int lightVal, int lightAvg, bool fire, unsigned
     doc["temperature_c"] = nullptr;
   } else {
     doc["temperature_c"] = tempC;
+    my_current_temp = tempC;
   }
 
   /********** RENDU PISCINE ************/
   doc["name"] = "JJT";
-  doc["lat"] = 43.7032; doc["lon"] = 7.2660; //MANDELIEU LA NAPOULE
+  doc["lat"] = my_lat; doc["lon"] = my_lon; 
 
   JsonObject info = doc.createNestedObject("info");
-  info["ident"] = "JJT";
+  info["ident"] = my_ident;
 
   JsonObject piscine = doc.createNestedObject("piscine");
   piscine["occuped"] = (lightVal > 700);
-  piscine["hotspot"] = false;
-
+  piscine["hotspot"] = get_hotspot_status();
 
   JsonObject actuators = doc.createNestedObject("actuators");
   actuators["fan_pwm"] = fanDuty;

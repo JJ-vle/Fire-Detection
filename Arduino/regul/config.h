@@ -22,6 +22,8 @@ const int FAN_MAX = 255;
 #define PIN_LIGHT 33
 #define PIN_ONBOARD_LED 2
 
+#define USE_SERIAL Serial
+
 // Lumière
 const int LIGHT_BUFFER_SIZE = 10;
 const int LIGHT_DELTA_THRESHOLD = 800;
@@ -37,3 +39,7 @@ const int FAN_CHANNEL = 3;
 //JSON
 extern String lastStatusJson;
 
+extern String my_ident;
+extern float my_lat;
+extern float my_lon;
+extern float my_current_temp;

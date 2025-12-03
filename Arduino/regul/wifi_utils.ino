@@ -117,8 +117,8 @@ void wifi_connect_multi(String hostname){
   wm.addAP("GMAP", "vijx47050");
   wm.addAP("Bbox-EA6814CF", "Hvtx6bGfD4Sn7PCs2r");
   wm.addAP("IOT", "iotmiage");
-  wm.addAP("proutphone", "PatateChantilly");
-  wm.addAP("Oui", "miraculous");
+  //wm.addAP("proutphone", "PatateChantilly");
+  //wm.addAP("Oui", "miraculous");
 
   
   WiFi.mode(WIFI_OFF);   

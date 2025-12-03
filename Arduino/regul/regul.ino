@@ -18,8 +18,8 @@ const unsigned long LOOP_DELAY_MS = 1000;
 String lastStatusJson;
 String hostname = "Mon petit objet ESP32";
 
-String my_ident = "P_dt210745"; // VOTRE ID ICI
-float my_lat = 43.7032; float my_lon = 7.2660; //MANDELIEU LA NAPOULE
+String my_ident = "JJT"; // VOTRE ID ICI
+float my_lat = 43.6032; float my_lon = 7.1660; //MANDELIEU LA NAPOULE
 float my_current_temp;
 
 // gestion des commandes reçues sur le port série
@@ -43,24 +43,35 @@ void handleSerialInput() {
 
 void sendStatusJson(float tempC, int lightVal, int lightAvg, bool fire, unsigned long now) {
   DynamicJsonDocument doc(512);
+  JsonObject status = doc.createNestedObject("status");
   doc["timestamp_ms"] = now;
   if (isnan(tempC)) {
     doc["temperature_c"] = nullptr;
   } else {
     doc["temperature_c"] = tempC;
+    status["temperature"] = tempC;
     my_current_temp = tempC;
   }
 
-  /********** RENDU PISCINE ************/
-  doc["name"] = "JJT";
-  doc["lat"] = my_lat; doc["lon"] = my_lon; 
-
+  // --- INFO ---
   JsonObject info = doc.createNestedObject("info");
   info["ident"] = my_ident;
+  info["user"] = "Jean-Jacques&Tom";
 
+  // --- LOCATION.GPS ---
+  JsonObject location = doc.createNestedObject("location");
+  JsonObject gps = location.createNestedObject("gps");
+  gps["lat"] = my_lat;
+  gps["lon"] = my_lon;
+
+  // --- PISCINE ---
   JsonObject piscine = doc.createNestedObject("piscine");
   piscine["occuped"] = (lightVal > 700);
-  piscine["hotspot"] = get_hotspot_status();
+ piscine["hotspot"] = (strcmp(get_hotspot_status(), "true") == 0);
+
+  /********** VRAC POUR TESTS PISCINES ************/
+  doc["name"] = "JJT";
+  doc["lat"] = my_lat; doc["lon"] = my_lon; 
 
   JsonObject actuators = doc.createNestedObject("actuators");
   actuators["fan_pwm"] = fanDuty;

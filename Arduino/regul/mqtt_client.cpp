@@ -7,8 +7,8 @@
 #include "piscine_utils.h"
 
 // --- Configuration Serveur ---
-//const char* mqtt_server = "10.0.1.58"; 
-const char* mqtt_server = "test.mosquitto.org";
+const char* mqtt_server = "10.0.1.58"; 
+//const char* mqtt_server = "test.mosquitto.org";
 const int mqtt_port = 1883;
 
 WiFiClient espClient;
